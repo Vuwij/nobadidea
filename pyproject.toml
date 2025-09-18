@@ -2,5 +2,10 @@
 name = "nobadidea"
 version = "0.1.0"
 description = "Add your description here"
-requires-python = ">=3.8"
-dependencies = []
+requires-python = ">=3.11"
+dependencies = [
+    "future>=1.0.0",
+    "numpy>=2.3.3",
+    "pillow>=11.3.0",
+    "pybullet>=3.2.7",
+]
