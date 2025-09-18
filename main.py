@@ -1,3 +1,4 @@
+import math
 from collections import deque
 
 import pybullet as pb
@@ -125,10 +126,11 @@ def run_pybullet():
 def goto_store(store: Store):
     global objects
 
-    """Callback: move robot to store using BFS"""
+    """Move robot along the BFS path using spin/move_forward"""
     if shared_robot is None:
         return
 
+    # Get start and goal grid
     start_pos, _ = pb.getBasePositionAndOrientation(shared_robot.body_id)
     start_grid = (round(start_pos[0]), round(start_pos[1]))
     goal_grid = (round(store.location[0]), round(store.location[1]))
@@ -139,11 +141,62 @@ def goto_store(store: Store):
         return
 
     print(f"Path to {store.name}: {path}")
-    for step in path:
-        target = (step[0], step[1], 0.1)  # z=0.1 fixed
-        pb.resetBasePositionAndOrientation(shared_robot.body_id, target, [0,0,0,1])
-        time.sleep(0.2)  # small delay to visualize step-by-step movement
 
+    for i in range(1, len(path)):
+        current = path[i-1]
+        next_tile = path[i]
+
+        # Compute required yaw to face next tile
+        dx = next_tile[0] - current[0]
+        dy = next_tile[1] - current[1]
+        target_yaw = math.atan2(dy, dx)
+
+        # Rotate until facing the direction
+        while True:
+            pos, orn = pb.getBasePositionAndOrientation(shared_robot.body_id)
+            euler = pb.getEulerFromQuaternion(orn)
+            yaw = euler[2]
+            angle_diff = (target_yaw - yaw + math.pi) % (2*math.pi) - math.pi  # normalize to [-pi, pi]
+
+            if abs(angle_diff) < 0.02:  # threshold
+                break
+            spin_speed = 3 if angle_diff > 0 else -3
+            shared_robot.spin(speed=spin_speed)
+            pb.stepSimulation()
+            time.sleep(1./240.)
+
+        # Move forward until reaching next tile
+        while True:
+            pos, _ = pb.getBasePositionAndOrientation(shared_robot.body_id)
+            if abs(pos[0] - next_tile[0]) < 0.1 and abs(pos[1] - next_tile[1]) < 0.1:
+                break
+            shared_robot.move_forward(speed=3.0)
+            pb.stepSimulation()
+            time.sleep(1./240.)
+
+    DIRECTION_TO_YAW = {
+        "RIGHT": 0,  # +X
+        "UP": math.pi / 2,  # +Y
+        "LEFT": math.pi,  # -X
+        "DOWN": -math.pi / 2  # -Y
+    }
+
+    # Rotate until facing the store front
+    target_yaw = DIRECTION_TO_YAW.get(store.direction, 0)
+    while True:
+        pos, orn = pb.getBasePositionAndOrientation(shared_robot.body_id)
+        euler = pb.getEulerFromQuaternion(orn)
+        yaw = euler[2]
+        angle_diff = (target_yaw - yaw + math.pi) % (2*math.pi) - math.pi  # normalize to [-pi, pi]
+
+        if abs(angle_diff) < 0.02:
+            break
+        spin_speed = 3 if angle_diff > 0 else -3
+        shared_robot.spin(speed=spin_speed)
+        pb.stepSimulation()
+        time.sleep(1./240.)
+
+    # Point arm to the correct floor at destination
     shared_robot.point_to_floor(store.floor)
     print(f"Arrived at {store.name}, floor {store.floor}, facing {store.direction}")
 

@@ -1,5 +1,5 @@
 class Store:
-    def __init__(self, name, location, floor=1, direction="NORTH"):
+    def __init__(self, name, location, floor=1, direction="UP"):
         """
         Store class
         :param name: str, store name

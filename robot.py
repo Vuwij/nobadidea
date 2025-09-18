@@ -24,7 +24,6 @@ class Robot:
         )
 
         # --- Arm shape (cylinder) ---
-        arm_radius = 0.02
         arm_length = 0.2
         self.arm_collision = pb.createCollisionShape(
             shapeType=pb.GEOM_CYLINDER,
@@ -32,15 +31,16 @@ class Robot:
             height=0.0001
         )
         self.arm_visual = pb.createVisualShape(
-            shapeType=pb.GEOM_CYLINDER,
-            radius=arm_radius,
-            length=arm_length,
-            rgbaColor=[0.8, 0.2, 0.2, 1],
-            visualFramePosition=[0, 0, arm_length / 2]  # base at joint
+            shapeType=pb.GEOM_MESH,
+            fileName="arm.stl",
+            meshScale=[0.001, 0.001, 0.001],  # adjust scale if needed
+            rgbaColor=[1, 0, 0, 1],  # optional color
+            visualFramePosition=[0, 0, 0],  # base at joint; adjust if needed
+            visualFrameOrientation = pb.getQuaternionFromEuler([0, 0, 0])
         )
 
         # Arm pivot offset: start from robot center, extend forward (north = +y)
-        arm_offset = [-radius, 0, height * 0.75]
+        arm_offset = [radius, 0, height * 0.75]
 
         # Build multibody with one link (the arm)
         self.body_id = pb.createMultiBody(
@@ -83,7 +83,7 @@ class Robot:
     def point_to_floor(self, floor: int):
         """Rotate arm to point to a floor:
            floor 0 = 0°, floor 1 = 45°, floor 2 = 60°"""
-        mapping = {0: 0, 1: math.radians(60), 2: math.radians(75)}
+        mapping = {0: 0, 1: -math.radians(60), 2: -math.radians(75)}
         target_angle = mapping.get(floor, 0)
 
         pb.setJointMotorControl2(
